@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: media-insights-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT
+    envVars:
+      - key: API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.9.0
+    autoDeploy: true
