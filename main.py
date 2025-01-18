@@ -4,6 +4,12 @@ from typing import List, Dict, Optional
 import os
 from dotenv import load_dotenv
 from content_finder import ContentFinder
+import logging
+import traceback
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -32,61 +38,86 @@ async def root():
 
 @app.post("/analyze-content")
 async def analyze_content(insights: MediaInsights, api_key: str = None):
-    verify_api_key(api_key)
-    
-    # Extract industry terms
-    industry_terms = content_finder.extract_industry_terms(insights.dict())
-    
-    # Get news content
-    news_content = content_finder.get_news_content(
-        industry_terms.get('industries', []),
-        industry_terms.get('products', [])
-    )
-    
-    # Get social media content
-    social_content = content_finder.get_social_media_content(
-        industry_terms.get('industries', []),
-        industry_terms.get('products', [])
-    )
-    
-    # Get competitor content
-    competitor_content = content_finder.get_competitor_content(insights.competitors)
-    
-    return {
-        "status": "success",
-        "data": {
-            "industry_terms": industry_terms,
-            "news_content": news_content,
-            "social_content": social_content,
-            "competitor_content": competitor_content
+    try:
+        verify_api_key(api_key)
+        logger.info("Starting content analysis")
+        
+        # Extract industry terms
+        industry_terms = content_finder.extract_industry_terms(insights.dict())
+        logger.info(f"Extracted industry terms: {industry_terms}")
+        
+        # Get news content
+        news_content = content_finder.get_news_content(
+            industry_terms.get('industries', []),
+            industry_terms.get('products', [])
+        )
+        logger.info("Retrieved news content")
+        
+        # Get social media content
+        social_content = content_finder.get_social_media_content(
+            industry_terms.get('industries', []),
+            industry_terms.get('products', [])
+        )
+        logger.info("Retrieved social media content")
+        
+        # Get competitor content
+        competitor_content = content_finder.get_competitor_content(insights.competitors)
+        logger.info("Retrieved competitor content")
+        
+        return {
+            "status": "success",
+            "data": {
+                "industry_terms": industry_terms,
+                "news_content": news_content,
+                "social_content": social_content,
+                "competitor_content": competitor_content
+            }
         }
-    }
+    except Exception as e:
+        logger.error(f"Error in analyze_content: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/news-content")
 async def get_news(insights: MediaInsights, api_key: str = None):
-    verify_api_key(api_key)
-    industry_terms = content_finder.extract_industry_terms(insights.dict())
-    news_content = content_finder.get_news_content(
-        industry_terms.get('industries', []),
-        industry_terms.get('products', [])
-    )
-    return {"status": "success", "data": news_content}
+    try:
+        verify_api_key(api_key)
+        industry_terms = content_finder.extract_industry_terms(insights.dict())
+        news_content = content_finder.get_news_content(
+            industry_terms.get('industries', []),
+            industry_terms.get('products', [])
+        )
+        return {"status": "success", "data": news_content}
+    except Exception as e:
+        logger.error(f"Error in get_news: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/social-content")
 async def get_social(insights: MediaInsights, api_key: str = None):
-    verify_api_key(api_key)
-    industry_terms = content_finder.extract_industry_terms(insights.dict())
-    social_content = content_finder.get_social_media_content(
-        industry_terms.get('industries', []),
-        industry_terms.get('products', [])
-    )
-    return {"status": "success", "data": social_content}
+    try:
+        verify_api_key(api_key)
+        industry_terms = content_finder.extract_industry_terms(insights.dict())
+        social_content = content_finder.get_social_media_content(
+            industry_terms.get('industries', []),
+            industry_terms.get('products', [])
+        )
+        return {"status": "success", "data": social_content}
+    except Exception as e:
+        logger.error(f"Error in get_social: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/competitor-content")
 async def get_competitor(insights: MediaInsights, api_key: str = None):
-    verify_api_key(api_key)
-    competitor_content = content_finder.get_competitor_content(insights.competitors)
-    return {"status": "success", "data": competitor_content}
+    try:
+        verify_api_key(api_key)
+        competitor_content = content_finder.get_competitor_content(insights.competitors)
+        return {"status": "success", "data": competitor_content}
+    except Exception as e:
+        logger.error(f"Error in get_competitor: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
