@@ -3,7 +3,7 @@ services:
     name: media-insights-api
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    startCommand: python -m gunicorn main:app
     envVars:
       - key: API_KEY
         sync: false
