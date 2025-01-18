@@ -3,10 +3,13 @@ services:
     name: media-insights-api
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python -m gunicorn main:app
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 4
     envVars:
       - key: API_KEY
-        sync: false
+        value: hidev
       - key: PYTHON_VERSION
         value: 3.9.0
+      - key: NEWS_API_KEY
+        value: 6829434b7662434e992ed2d0613b8d9d
+    healthCheckPath: /
     autoDeploy: true
