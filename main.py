@@ -6,9 +6,16 @@ from dotenv import load_dotenv
 from content_finder import ContentFinder
 import logging
 import traceback
+import sys
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
@@ -47,21 +54,25 @@ async def analyze_content(insights: MediaInsights, api_key: str = None):
         logger.info(f"Extracted industry terms: {industry_terms}")
         
         # Get news content
-        news_content = content_finder.get_news_content(
-            industry_terms.get('industries', []),
-            industry_terms.get('products', [])
+        news_content = content_finder.search_news_api(
+            f"{' '.join(industry_terms.get('industries', []))} {' '.join(industry_terms.get('product_terms', []))}"
         )
         logger.info("Retrieved news content")
         
         # Get social media content
-        social_content = content_finder.get_social_media_content(
-            industry_terms.get('industries', []),
-            industry_terms.get('products', [])
+        social_content = content_finder.search_reddit(
+            f"{' '.join(industry_terms.get('industries', []))} {' '.join(industry_terms.get('product_terms', []))}"
         )
         logger.info("Retrieved social media content")
         
         # Get competitor content
-        competitor_content = content_finder.get_competitor_content(insights.competitors)
+        competitor_content = []
+        for competitor in insights.competitors:
+            try:
+                content = content_finder.search_medium(competitor)
+                competitor_content.extend(content)
+            except Exception as e:
+                logger.error(f"Error getting competitor content for {competitor}: {str(e)}")
         logger.info("Retrieved competitor content")
         
         return {
@@ -82,11 +93,12 @@ async def analyze_content(insights: MediaInsights, api_key: str = None):
 async def get_news(insights: MediaInsights, api_key: str = None):
     try:
         verify_api_key(api_key)
+        logger.info("Starting news content search")
         industry_terms = content_finder.extract_industry_terms(insights.dict())
-        news_content = content_finder.get_news_content(
-            industry_terms.get('industries', []),
-            industry_terms.get('products', [])
+        news_content = content_finder.search_news_api(
+            f"{' '.join(industry_terms.get('industries', []))} {' '.join(industry_terms.get('product_terms', []))}"
         )
+        logger.info("Retrieved news content")
         return {"status": "success", "data": news_content}
     except Exception as e:
         logger.error(f"Error in get_news: {str(e)}")
@@ -97,11 +109,12 @@ async def get_news(insights: MediaInsights, api_key: str = None):
 async def get_social(insights: MediaInsights, api_key: str = None):
     try:
         verify_api_key(api_key)
+        logger.info("Starting social content search")
         industry_terms = content_finder.extract_industry_terms(insights.dict())
-        social_content = content_finder.get_social_media_content(
-            industry_terms.get('industries', []),
-            industry_terms.get('products', [])
+        social_content = content_finder.search_reddit(
+            f"{' '.join(industry_terms.get('industries', []))} {' '.join(industry_terms.get('product_terms', []))}"
         )
+        logger.info("Retrieved social content")
         return {"status": "success", "data": social_content}
     except Exception as e:
         logger.error(f"Error in get_social: {str(e)}")
@@ -112,7 +125,15 @@ async def get_social(insights: MediaInsights, api_key: str = None):
 async def get_competitor(insights: MediaInsights, api_key: str = None):
     try:
         verify_api_key(api_key)
-        competitor_content = content_finder.get_competitor_content(insights.competitors)
+        logger.info("Starting competitor content search")
+        competitor_content = []
+        for competitor in insights.competitors:
+            try:
+                content = content_finder.search_medium(competitor)
+                competitor_content.extend(content)
+            except Exception as e:
+                logger.error(f"Error getting competitor content for {competitor}: {str(e)}")
+        logger.info("Retrieved competitor content")
         return {"status": "success", "data": competitor_content}
     except Exception as e:
         logger.error(f"Error in get_competitor: {str(e)}")

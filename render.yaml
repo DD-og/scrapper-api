@@ -1,15 +1,15 @@
 services:
   - type: web
-    name: media-insights-api
+    name: scrapper-api
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 4
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: API_KEY
         value: hidev
-      - key: PYTHON_VERSION
-        value: 3.9.0
       - key: NEWS_API_KEY
         value: 6829434b7662434e992ed2d0613b8d9d
+      - key: PYTHON_VERSION
+        value: 3.9.0
     healthCheckPath: /
-    autoDeploy: true
+    autoDeploy: false
