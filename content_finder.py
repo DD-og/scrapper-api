@@ -20,7 +20,7 @@ class ContentFinder:
         
         # Initialize Reddit client
         try:
-            print("Initializing Reddit client...")
+            print("Initializing Reddit client in read-only mode...")
             print(f"Client ID: {os.getenv('REDDIT_CLIENT_ID')}")
             print(f"User Agent: {os.getenv('REDDIT_USER_AGENT')}")
             
@@ -28,10 +28,11 @@ class ContentFinder:
                 client_id=os.getenv('REDDIT_CLIENT_ID'),
                 client_secret=os.getenv('REDDIT_CLIENT_SECRET'),
                 user_agent=os.getenv('REDDIT_USER_AGENT', 'ContentFinder/1.0'),
-                username=os.getenv('REDDIT_USERNAME'),  # Optional
-                password=os.getenv('REDDIT_PASSWORD')   # Optional
+                check_for_async=False,
+                read_only=True
             )
-            print("Reddit client initialized successfully")
+            print("Reddit client initialized successfully in read-only mode")
+            print(f"Read only status: {self.reddit.read_only}")
             
         except Exception as e:
             print(f"Error initializing Reddit client: {str(e)}")
@@ -455,7 +456,7 @@ class ContentFinder:
 
     def search_reddit(self, query: str, max_results: int = 5) -> List[Dict]:
         """
-        Search Reddit using PRAW
+        Search Reddit using PRAW in read-only mode
         """
         try:
             print(f"Starting Reddit search for query: {query}")
@@ -466,20 +467,28 @@ class ContentFinder:
             
             results = []
             print(f"Searching subreddit 'all' with query: {query}")
+            print(f"Reddit client read_only status: {self.reddit.read_only}")
             
             # Search Reddit
-            for submission in self.reddit.subreddit('all').search(query, limit=max_results, sort='relevance'):
-                result = {
-                    'title': submission.title,
-                    'url': f"https://reddit.com{submission.permalink}",
-                    'source': 'reddit',
-                    'score': submission.score,
-                    'created_utc': submission.created_utc,
-                    'subreddit': str(submission.subreddit),
-                    'author': str(submission.author) if submission.author else '[deleted]'
-                }
-                results.append(result)
-                print(f"Added post: {result['title']} from r/{result['subreddit']}")
+            search_results = list(self.reddit.subreddit('all').search(query, limit=max_results))
+            print(f"Initial search returned {len(search_results)} results")
+            
+            for submission in search_results:
+                try:
+                    result = {
+                        'title': submission.title,
+                        'url': f"https://reddit.com{submission.permalink}",
+                        'source': 'reddit',
+                        'score': submission.score,
+                        'created_utc': submission.created_utc,
+                        'subreddit': str(submission.subreddit),
+                        'author': str(submission.author) if submission.author else '[deleted]'
+                    }
+                    results.append(result)
+                    print(f"Added post: {result['title']} from r/{result['subreddit']}")
+                except Exception as post_error:
+                    print(f"Error processing post: {str(post_error)}")
+                    continue
             
             print(f"Found {len(results)} Reddit posts")
             return results
