@@ -19,13 +19,24 @@ class ContentFinder:
         self.news_api_key = '6829434b7662434e992ed2d0613b8d9d'  # NewsAPI key
         
         # Initialize Reddit client
-        self.reddit = praw.Reddit(
-            client_id=os.getenv('REDDIT_CLIENT_ID'),
-            client_secret=os.getenv('REDDIT_CLIENT_SECRET'),
-            user_agent=os.getenv('REDDIT_USER_AGENT', 'ContentFinder/1.0'),
-            username=os.getenv('REDDIT_USERNAME'),  # Optional
-            password=os.getenv('REDDIT_PASSWORD')   # Optional
-        )
+        try:
+            print("Initializing Reddit client...")
+            print(f"Client ID: {os.getenv('REDDIT_CLIENT_ID')}")
+            print(f"User Agent: {os.getenv('REDDIT_USER_AGENT')}")
+            
+            self.reddit = praw.Reddit(
+                client_id=os.getenv('REDDIT_CLIENT_ID'),
+                client_secret=os.getenv('REDDIT_CLIENT_SECRET'),
+                user_agent=os.getenv('REDDIT_USER_AGENT', 'ContentFinder/1.0'),
+                username=os.getenv('REDDIT_USERNAME'),  # Optional
+                password=os.getenv('REDDIT_PASSWORD')   # Optional
+            )
+            print("Reddit client initialized successfully")
+            
+        except Exception as e:
+            print(f"Error initializing Reddit client: {str(e)}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
 
     def _delay(self):
         """Add random delay between requests"""
@@ -448,7 +459,13 @@ class ContentFinder:
         """
         try:
             print(f"Starting Reddit search for query: {query}")
+            print("Checking if Reddit client is initialized...")
+            if not hasattr(self, 'reddit'):
+                print("Reddit client not initialized. Attempting to initialize...")
+                self.__init__()
+            
             results = []
+            print(f"Searching subreddit 'all' with query: {query}")
             
             # Search Reddit
             for submission in self.reddit.subreddit('all').search(query, limit=max_results, sort='relevance'):
