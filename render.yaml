@@ -11,5 +11,11 @@ services:
         value: 6829434b7662434e992ed2d0613b8d9d
       - key: PYTHON_VERSION
         value: 3.9.0
+      - key: REDDIT_CLIENT_ID
+        value: IW7JQMSzU-uCbp-0Gmi2lA
+      - key: REDDIT_CLIENT_SECRET
+        value: xxahjdPKNwpOtCjD1pWBahtx0pC67Q
+      - key: REDDIT_USER_AGENT
+        value: ContentFinder/1.0
     healthCheckPath: /
     autoDeploy: false

@@ -7,6 +7,8 @@ import feedparser
 from datetime import datetime, timedelta
 import urllib.parse
 from bs4 import BeautifulSoup
+import os
+import praw
 
 class ContentFinder:
     def __init__(self):
@@ -15,6 +17,15 @@ class ContentFinder:
         }
         self.delay_range = (1, 2)
         self.news_api_key = '6829434b7662434e992ed2d0613b8d9d'  # NewsAPI key
+        
+        # Initialize Reddit client
+        self.reddit = praw.Reddit(
+            client_id=os.getenv('REDDIT_CLIENT_ID'),
+            client_secret=os.getenv('REDDIT_CLIENT_SECRET'),
+            user_agent=os.getenv('REDDIT_USER_AGENT', 'ContentFinder/1.0'),
+            username=os.getenv('REDDIT_USERNAME'),  # Optional
+            password=os.getenv('REDDIT_PASSWORD')   # Optional
+        )
 
     def _delay(self):
         """Add random delay between requests"""
@@ -433,43 +444,27 @@ class ContentFinder:
 
     def search_reddit(self, query: str, max_results: int = 5) -> List[Dict]:
         """
-        Search Reddit using their JSON API
+        Search Reddit using PRAW
         """
         try:
             print(f"Starting Reddit search for query: {query}")
-            encoded_query = urllib.parse.quote(query)
-            url = f"https://www.reddit.com/search.json?q={encoded_query}&sort=relevance&limit={max_results}"
-            
-            print(f"Making request to Reddit API: {url}")
-            response = requests.get(url, headers=self.headers)
-            print(f"Reddit API response status code: {response.status_code}")
-            
-            if response.status_code != 200:
-                print(f"Reddit API error: Status code {response.status_code}")
-                print(f"Response content: {response.text[:500]}")  # Print first 500 chars of error
-                return []
-            
-            data = response.json()
             results = []
             
-            if 'data' in data and 'children' in data['data']:
-                posts = data['data']['children']
-                print(f"Found {len(posts)} Reddit posts")
-                
-                for post in posts:
-                    post_data = post['data']
-                    result = {
-                        'title': post_data.get('title', ''),
-                        'url': f"https://reddit.com{post_data.get('permalink', '')}",
-                        'source': 'reddit',
-                        'score': post_data.get('score', 0),
-                        'created_utc': post_data.get('created_utc', 0)
-                    }
-                    results.append(result)
-                    print(f"Added post: {result['title']}")
-            else:
-                print(f"Unexpected Reddit API response structure: {data.keys()}")
+            # Search Reddit
+            for submission in self.reddit.subreddit('all').search(query, limit=max_results, sort='relevance'):
+                result = {
+                    'title': submission.title,
+                    'url': f"https://reddit.com{submission.permalink}",
+                    'source': 'reddit',
+                    'score': submission.score,
+                    'created_utc': submission.created_utc,
+                    'subreddit': str(submission.subreddit),
+                    'author': str(submission.author) if submission.author else '[deleted]'
+                }
+                results.append(result)
+                print(f"Added post: {result['title']} from r/{result['subreddit']}")
             
+            print(f"Found {len(results)} Reddit posts")
             return results
             
         except Exception as e:
