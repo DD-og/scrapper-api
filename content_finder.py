@@ -215,12 +215,17 @@ class ContentFinder:
         Search YouTube using direct search
         """
         try:
+            print(f"Starting YouTube search for query: {query}")
             encoded_query = urllib.parse.quote(query)
             url = f"https://www.youtube.com/results?search_query={encoded_query}"
+            
+            print(f"Making request to YouTube: {url}")
             response = requests.get(url, headers=self.headers)
+            print(f"YouTube response status code: {response.status_code}")
             
             if response.status_code != 200:
-                print(f"Error: YouTube request failed with status {response.status_code}")
+                print(f"YouTube error: Status code {response.status_code}")
+                print(f"Response content: {response.text[:500]}")  # Print first 500 chars of error
                 return []
                 
             # Extract video IDs using string manipulation
@@ -270,6 +275,7 @@ class ContentFinder:
                         'query': query
                     }
                     videos.append(video_info)
+                    print(f"Added video: {video_info['title']}")
                 
                 start = title_end
             
@@ -287,6 +293,8 @@ class ContentFinder:
             
         except Exception as e:
             print(f"Error in YouTube search: {str(e)}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
             return []
 
     def search_news_api(self, query: str, max_results: int = 5) -> List[Dict]:
@@ -294,6 +302,7 @@ class ContentFinder:
         Search using NewsAPI with improved query handling
         """
         try:
+            print(f"Starting NewsAPI search for query: {query}")
             # Calculate date range (last 6 months)
             end_date = datetime.now()
             start_date = end_date - timedelta(days=180)
@@ -316,7 +325,10 @@ class ContentFinder:
                 'apiKey': self.news_api_key
             }
             
+            print(f"Making request to NewsAPI: {url} with params {params}")
             response = requests.get(url, params=params)
+            print(f"NewsAPI response status code: {response.status_code}")
+            
             if response.status_code == 200:
                 data = response.json()
                 results = []
@@ -344,6 +356,7 @@ class ContentFinder:
                         if any(term.lower() in result['title'].lower() or term.lower() in result['snippet'].lower() 
                               for term in ['jbl', 'harman', 'audio', 'market', 'india', 'speaker', 'headphone']):
                             results.append(result)
+                            print(f"Added article: {result['title']}")
                             print(f"  Title: {result['title']}")
                             print(f"  Source: {result['source']}")
                             print(f"  URL: {result['link']}")
@@ -365,6 +378,8 @@ class ContentFinder:
                 
         except Exception as e:
             print(f"Error in News API search: {str(e)}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
             return []
 
     def search_news(self, query: str, max_results: int = 5) -> List[Dict]:
@@ -372,9 +387,11 @@ class ContentFinder:
         Search news using Google News RSS feed
         """
         try:
+            print(f"Starting Google News search for query: {query}")
             encoded_query = urllib.parse.quote(query)
             url = f"https://news.google.com/rss/search?q={encoded_query}&hl=en-IN&gl=IN&ceid=IN:en"
             
+            print(f"Making request to Google News: {url}")
             feed = feedparser.parse(url)
             results = []
             
@@ -396,6 +413,7 @@ class ContentFinder:
                     if any(term.lower() in result['title'].lower() or term.lower() in result['snippet'].lower() 
                           for term in ['jbl', 'harman', 'audio', 'market', 'india', 'speaker', 'headphone']):
                         results.append(result)
+                        print(f"Added article: {result['title']}")
                         print(f"  Title: {result['title']}")
                         print(f"  Source: {result['source']}")
                         print(f"  URL: {result['link']}")
@@ -409,33 +427,55 @@ class ContentFinder:
             
         except Exception as e:
             print(f"Error in news search: {str(e)}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
             return []
 
     def search_reddit(self, query: str, max_results: int = 5) -> List[Dict]:
         """
         Search Reddit using their JSON API
         """
-        self._delay()
-        base_url = f"https://www.reddit.com/search.json?q={query}&sort=relevance&limit={max_results}"
-        
         try:
-            response = requests.get(base_url, headers=self.headers)
-            response.raise_for_status()
-            data = response.json()
+            print(f"Starting Reddit search for query: {query}")
+            encoded_query = urllib.parse.quote(query)
+            url = f"https://www.reddit.com/search.json?q={encoded_query}&sort=relevance&limit={max_results}"
             
+            print(f"Making request to Reddit API: {url}")
+            response = requests.get(url, headers=self.headers)
+            print(f"Reddit API response status code: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"Reddit API error: Status code {response.status_code}")
+                print(f"Response content: {response.text[:500]}")  # Print first 500 chars of error
+                return []
+            
+            data = response.json()
             results = []
-            for post in data['data']['children']:
-                post_data = post['data']
-                results.append({
-                    'title': post_data['title'],
-                    'url': f"https://reddit.com{post_data['permalink']}",
-                    'source': 'reddit',
-                    'score': post_data['score'],
-                    'created_utc': post_data['created_utc']
-                })
+            
+            if 'data' in data and 'children' in data['data']:
+                posts = data['data']['children']
+                print(f"Found {len(posts)} Reddit posts")
+                
+                for post in posts:
+                    post_data = post['data']
+                    result = {
+                        'title': post_data.get('title', ''),
+                        'url': f"https://reddit.com{post_data.get('permalink', '')}",
+                        'source': 'reddit',
+                        'score': post_data.get('score', 0),
+                        'created_utc': post_data.get('created_utc', 0)
+                    }
+                    results.append(result)
+                    print(f"Added post: {result['title']}")
+            else:
+                print(f"Unexpected Reddit API response structure: {data.keys()}")
+            
             return results
+            
         except Exception as e:
-            print(f"Error searching Reddit: {str(e)}")
+            print(f"Error in Reddit search: {str(e)}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
             return []
 
     def search_medium(self, query: str, max_results: int = 5) -> List[Dict]:
@@ -449,12 +489,19 @@ class ContentFinder:
         Returns:
             List of dictionaries containing article information
         """
-        self._delay()
-        search_url = f"https://medium.com/search?q={query}"
-        
         try:
+            print(f"Starting Medium search for query: {query}")
+            search_url = f"https://medium.com/search?q={query}"
+            
+            print(f"Making request to Medium: {search_url}")
             response = requests.get(search_url, headers=self.headers)
-            response.raise_for_status()
+            print(f"Medium response status code: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"Medium error: Status code {response.status_code}")
+                print(f"Response content: {response.text[:500]}")  # Print first 500 chars of error
+                return []
+            
             soup = BeautifulSoup(response.text, 'html.parser')
             
             results = []
@@ -481,11 +528,14 @@ class ContentFinder:
                         'author': author,
                         'source': 'medium'
                     })
+                    print(f"Added article: {title}")
                     
             return results[:max_results]
             
         except Exception as e:
             print(f"Error searching Medium: {str(e)}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
             return []
 
     def categorize_query(self, query: str):
